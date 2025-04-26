@@ -4,6 +4,9 @@ import pyautogui
 import util
 from pynput.mouse import Button, Controller
 import random
+import tkinter as tk
+import threading
+import time
 
 screen_width, screen_height = pyautogui.size()
 mouse = Controller()
@@ -14,7 +17,6 @@ hands = mpHands.Hands(
     min_tracking_confidence=0.7,
     max_num_hands=1,
 )
-
 
 # Frame counters for gesture stability
 gesture_frames = {
@@ -27,6 +29,25 @@ gesture_frames = {
     "screenshot": 0
 }
 FRAME_THRESHOLD = 7  # Adjust for sensitivity
+# Global variables to track time
+start_time = time.time()
+
+# Function to display a temporary notification
+def show_notification(message):
+    def notification():
+        root = tk.Tk()
+        root.overrideredirect(True)  # Remove window decorations
+        root.geometry(f"300x100+{screen_width//2-150}+{screen_height//2-50}")  # Center the window
+        root.configure(bg="yellow")
+        
+        label = tk.Label(root, text=message, font=("Arial", 16), bg="yellow", fg="black")
+        label.pack(expand=True)
+        
+        root.after(1500, root.destroy)  # Close after 1.5 seconds
+        root.mainloop()
+    
+    threading.Thread(target=notification).start()
+
 def fingers_up(landmarks):
     fingers = []
     tip_ids = [4, 8, 12, 16, 20]
@@ -43,6 +64,27 @@ def fingers_up(landmarks):
             fingers.append(1)
         else:
             fingers.append(0)
+    return fingers
+
+def joints(landmarks_list):
+    fingers = []
+    # Tip landmarks vs lower joint landmarks
+    if landmarks_list[8][1] < landmarks_list[6][1]:  # Index
+        fingers.append(1)
+    else:
+        fingers.append(0)
+    if landmarks_list[12][1] < landmarks_list[10][1]:  # Middle
+        fingers.append(1)
+    else:
+        fingers.append(0)
+    if landmarks_list[16][1] < landmarks_list[14][1]:  # Ring
+        fingers.append(1)
+    else:
+        fingers.append(0)
+    if landmarks_list[20][1] < landmarks_list[18][1]:  # Pinky
+        fingers.append(1)
+    else:
+        fingers.append(0)
     return fingers
 
 def find_finger_tip(processed):
@@ -78,10 +120,12 @@ def is_screenshot(landmarks_list, thumb_index_dist):
             thumb_index_dist < 50)
 
 def is_zoom_in(landmarks_list, thumb_index_dist):
-    return thumb_index_dist > 100  # Adjust this threshold based on your preference
+    fingers = joints(landmarks_list)
+    return sum(fingers) == 4  # 4 fingers up
 
 def is_zoom_out(landmarks_list, thumb_index_dist):
-    return thumb_index_dist < 50  # Adjust this threshold based on your preference
+    fingers = joints(landmarks_list)
+    return sum(fingers) == 3  # 3 fingers up
 
 def scroll(frame, landmarks_list):
     index_y = landmarks_list[8][1]
@@ -90,16 +134,20 @@ def scroll(frame, landmarks_list):
 
     if center_y < 0.4:
         pyautogui.scroll(30)  # Scroll up
-        show_notification(frame, "Scroll Up")
+        show_action(frame,"Scroll Up")
+        show_notification("Scroll Up")
+
     elif center_y > 0.6:
         pyautogui.scroll(-30) # Scroll down
-        show_notification(frame, "Scroll Down")
+        show_action(frame,"Scroll Down")
+        show_notification("Scroll Down")
     else:
-        show_notification(frame, "Scrolling Neutral")
+        show_action(frame,"Scrolling Neutral")
+        show_notification("Scrolling Neutral")
 
-def show_notification(frame, action):
+def show_action(frame, action):
     cv2.putText(frame, action, (frame.shape[1]-300, 40), 
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2) 
     
 def detect_gestures(frame, landmarks_list, processed):
     global gesture_frames
@@ -110,12 +158,13 @@ def detect_gestures(frame, landmarks_list, processed):
         # Cursor Movement (only index finger up)
         if fingers == [0,1,0,0,0]:
             move_mouse(index_finger_tip)
-            show_notification(frame, "Moving Cursor")
+            show_action(frame,"Moving Cursor")
+            show_notification("Moving Cursor")
         # Scroll (Index + Middle up) - V Shape
         elif fingers == [0,1,1,0,0]:
             gesture_frames["scroll"] += 1
             if gesture_frames["scroll"] > FRAME_THRESHOLD:
-                scroll(frame, landmarks_list)
+                scroll(frame, landmarks_list)    
         else:
             gesture_frames["scroll"] = 0
 
@@ -123,38 +172,47 @@ def detect_gestures(frame, landmarks_list, processed):
         if is_left_click(landmarks_list, thumb_index_dist):
             mouse.press(Button.left)
             mouse.release(Button.left)
-            cv2.putText(frame, "Left Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            #cv2.putText(frame, "Left Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            show_notification("Left Click")
 
         # Right Click
         elif is_right_click(landmarks_list, thumb_index_dist):
             mouse.press(Button.right)
             mouse.release(Button.right)
-            cv2.putText(frame, "Right Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            #cv2.putText(frame, "Right Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            show_notification("Right Click")
 
         # Double Click
         elif is_double_click(landmarks_list, thumb_index_dist):
             pyautogui.doubleClick()
-            cv2.putText(frame, "Double Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+           # cv2.putText(frame, "Double Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            show_notification("Double Click")
         
-        
-
-
         # Screenshot
         elif is_screenshot(landmarks_list, thumb_index_dist):
             im1 = pyautogui.screenshot()
             label = random.randint(1, 1000)
             im1.save(f'my_screenshot_{label}.png')
-            cv2.putText(frame, "Screenshot", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            #cv2.putText(frame, "Screenshot", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            show_notification("Screenshot")
 
         # Zoom In
         elif is_zoom_in(landmarks_list, thumb_index_dist):
-            pyautogui.hotkey('ctrl', '+')  # Simulates pressing Ctrl and + for zoom in
-            cv2.putText(frame, "Zoom In", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-
+            pyautogui.hotkey('ctrl', '+')
+            #cv2.putText(frame, "Zoom In", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            show_notification("Zoom In")
         # Zoom Out
         elif is_zoom_out(landmarks_list, thumb_index_dist):
-            pyautogui.hotkey('ctrl', '-')  # Simulates pressing Ctrl and - for zoom out
-            cv2.putText(frame, "Zoom Out", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            pyautogui.hotkey('ctrl', '-')
+            #cv2.putText(frame, "Zoom Out", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            show_notification("Zoom Out")
+
+def check_prolonged_usage():
+    elapsed_time = time.time() - start_time
+    if elapsed_time >= 1800:  # 30 minutes
+        show_notification("You may be using the virtual mouse for too long. Take a break!")
+    elif elapsed_time >= 3600:  # 60 minutes
+        show_notification("Using the virtual mouse for extended periods may cause strain. Please rest!")
 
 def main():
     cap = cv2.VideoCapture(0)
@@ -180,6 +238,7 @@ def main():
                     landmarks_list.append((lm.x, lm.y))
 
             detect_gestures(frame, landmarks_list, processed)
+            check_prolonged_usage()
 
             cv2.imshow('Frame', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
