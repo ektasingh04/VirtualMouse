@@ -35,18 +35,70 @@ start_time = time.time()
 # Function to display a temporary notification
 def show_notification(message):
     def notification():
+        # Create a new root window
         root = tk.Tk()
+        root.withdraw()  # Initially hide the window while configuring it
+        root.attributes('-topmost', True)  # Make window appear on top of all others
         root.overrideredirect(True)  # Remove window decorations
-        root.geometry(f"300x100+{screen_width//2-150}+{screen_height//2-50}")  # Center the window
-        root.configure(bg="yellow")
         
-        label = tk.Label(root, text=message, font=("Arial", 16), bg="yellow", fg="black")
-        label.pack(expand=True)
+        # Configure the main window background
+        root.configure(bg="black")
         
-        root.after(1500, root.destroy)  # Close after 1.5 seconds
+        # Create a frame with a thin black border
+        container = tk.Frame(root, bg="black", padx=2, pady=2)
+        container.pack(fill="both", expand=True)
+        
+        # Create the content frame with yellow background
+        content = tk.Frame(container, bg="yellow")
+        content.pack(fill="both", expand=True)
+        
+        # Create the label with the message
+        label = tk.Label(content, text=message, font=("Arial", 16), bg="yellow", fg="black", padx=20, pady=15)
+        label.pack(padx=10, pady=10)
+        
+        # Pre-calculate size before showing
+        root.update_idletasks()
+        width = label.winfo_reqwidth() + 40
+        height = label.winfo_reqheight() + 30
+        
+        # Center the window on screen
+        x_position = screen_width // 2 - width // 2
+        y_position = screen_height // 4  # Position in the top quarter of the screen for less intrusion
+        
+        # Set the final size and position
+        root.geometry(f"{width}x{height}+{x_position}+{y_position}")
+        
+        # Implement smooth fade-in and fade-out
+        def fade_in():
+            root.deiconify()  # Show the window
+            alpha = 0.0
+            while alpha < 1.0:
+                root.attributes('-alpha', alpha)
+                root.update()
+                time.sleep(0.01)
+                alpha += 0.1
+        
+        def fade_out():
+            alpha = 1.0
+            while alpha > 0.0:
+                root.attributes('-alpha', alpha)
+                root.update()
+                time.sleep(0.01)
+                alpha -= 0.1
+            root.destroy()
+        
+        # Execute the fade in
+        fade_in()
+        
+        # Schedule the fade out
+        root.after(1200, fade_out)  # Start fading out after 1.2 seconds
+        
         root.mainloop()
     
-    threading.Thread(target=notification).start()
+    # Create a new thread to show the notification
+    notification_thread = threading.Thread(target=notification)
+    notification_thread.daemon = True  # Make thread daemon so it doesn't block program exit
+    notification_thread.start()
 
 
 def fingers_up(landmarks):
@@ -208,7 +260,7 @@ def detect_gestures(frame, landmarks_list, processed):
 
 def check_prolonged_usage():
     elapsed_time = time.time() - start_time
-    if elapsed_time >= 300:  # 5 minutes
+    if elapsed_time >= 30:  # 5 minutes
         show_notification("You may be using the virtual mouse for too long. Take a break!")
     elif elapsed_time >= 3600:  # 60 minutes
         show_notification("Using the virtual mouse for extended periods may cause strain. Please rest!")
