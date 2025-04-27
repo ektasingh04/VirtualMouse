@@ -16,6 +16,7 @@ The project detects various hand gestures in real time and converts them into mo
 - To **Zoom Out**, use just three fingers (**Index, Middle, and Ring**).
 - For **Scrolling**, position your **Thumb**, **Index**, and **Middle fingers** in a V-shape. Move them upwards to scroll up, and down to scroll down.
 - A **V-shape** formed by the **Index** and **Middle fingers** can help you stay on the current option.
+- Form a **O** shape with your thumb and fingers to **close** the mouse.
 
 ###### Prolonged Usage Notifications
 
