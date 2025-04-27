@@ -91,7 +91,7 @@ def show_notification(message):
         fade_in()
         
         # Schedule the fade out
-        root.after(1200, fade_out)  # Start fading out after 1.2 seconds
+        root.after(100, fade_out)  # Start fading out after 1.2 seconds
         
         root.mainloop()
     
@@ -258,12 +258,27 @@ def detect_gestures(frame, landmarks_list, processed):
             #cv2.putText(frame, "Zoom Out", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
             show_notification("Zoom Out")
 
+last_notification_time = 0
+notification_display_duration = 3  # 3 seconds
+notification_shown = False
 def check_prolonged_usage():
+    global last_notification_time, notification_shown
+
     elapsed_time = time.time() - start_time
-    if elapsed_time >= 30:  # 5 minutes
-        show_notification("You may be using the virtual mouse for too long. Take a break!")
-    elif elapsed_time >= 3600:  # 60 minutes
-        show_notification("Using the virtual mouse for extended periods may cause strain. Please rest!")
+    current_time = time.time()
+
+    # Check if enough time has passed to trigger a notification
+    if elapsed_time >= 30 and elapsed_time < 3600:  # between 30 and 60 minutes
+        if not notification_shown or current_time - last_notification_time > notification_display_duration:
+            show_notification("You may be using the virtual mouse for too long. Take a break!")
+            last_notification_time = current_time
+            notification_shown = True
+
+    elif elapsed_time >= 3600:  # 60 minutes or more
+        if not notification_shown or current_time - last_notification_time > notification_display_duration:
+            show_notification("Using the virtual mouse for extended periods may cause strain. Please rest!")
+            last_notification_time = current_time
+            notification_shown = True
 
 def main():
     cap = cv2.VideoCapture(0)
