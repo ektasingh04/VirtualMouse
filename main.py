@@ -26,9 +26,11 @@ gesture_frames = {
     "scroll": 0,
     "zoom_in": 0,
     "zoom_out": 0,
-    "screenshot": 0
+    "screenshot": 0,
+    "exit" : 0
 }
 FRAME_THRESHOLD = 7  # Adjust for sensitivity
+EXIT_FRAME_THRESHOLD = 15
 # Global variables to track time
 start_time = time.time()
 
@@ -118,6 +120,10 @@ def fingers_up(landmarks):
         else:
             fingers.append(0)
     return fingers
+    if sum(fingers) == 0:  # If all fingers are down, it's a "0" gesture
+        stop_virtual_mouse = True  # Stop the virtual mouse
+        # show_notification("Virtual mouse stopped")
+
 
 def joints(landmarks_list):
     fingers = []
@@ -202,13 +208,32 @@ def show_action(frame, action):
     cv2.putText(frame, action, (frame.shape[1]-300, 40), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2) 
     
+def is_zero_shape(landmarks_list):
+    # Check the state of all fingers (using fingers_up function)
+    fingers = fingers_up(landmarks_list)
+    
+    # If all fingers are down, return True (i.e., "0" gesture detected)
+    return sum(fingers) == 0
+
+
+    
 def detect_gestures(frame, landmarks_list, processed):
     global gesture_frames
     if len(landmarks_list) >= 21:
         index_finger_tip = find_finger_tip(processed)
         thumb_index_dist = util.get_distance((landmarks_list[4], landmarks_list[8]))
         fingers = fingers_up(landmarks_list)
-        # Cursor Movement (only index finger up)
+
+        if is_zero_shape(landmarks_list):
+            gesture_frames["exit"] += 1
+            if gesture_frames["exit"] > EXIT_FRAME_THRESHOLD:
+                show_action(frame, "Exiting Program")
+                show_notification("Exiting Program")
+                exit_flag = True  # Set the exit flag to True
+                return False  # Return False to stop gesture detection
+        else:
+            gesture_frames["exit"] = 0
+
         if fingers == [0,1,0,0,0]:
             move_mouse(index_finger_tip)
             show_action(frame,"Moving Cursor")
@@ -257,6 +282,7 @@ def detect_gestures(frame, landmarks_list, processed):
             pyautogui.hotkey('ctrl', '-')
             #cv2.putText(frame, "Zoom Out", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
             show_notification("Zoom Out")
+    return True
 
 last_notification_time = 0
 notification_display_duration = 3  # 3 seconds
@@ -305,6 +331,9 @@ def main():
 
             detect_gestures(frame, landmarks_list, processed)
             check_prolonged_usage()
+            exit_signal = detect_gestures(frame, landmarks_list, processed)
+            if not exit_signal:  # If the exit gesture was detected, exit the program
+                break
 
             cv2.imshow('Frame', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
