@@ -48,6 +48,7 @@ def show_notification(message):
     
     threading.Thread(target=notification).start()
 
+
 def fingers_up(landmarks):
     fingers = []
     tip_ids = [4, 8, 12, 16, 20]
@@ -177,10 +178,9 @@ def detect_gestures(frame, landmarks_list, processed):
 
         # Right Click
         elif is_right_click(landmarks_list, thumb_index_dist):
-            mouse.press(Button.right)
-            mouse.release(Button.right)
-            #cv2.putText(frame, "Right Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            show_notification("Right Click")
+            move_mouse(index_finger_tip)
+            show_action(frame,"Moving Cursor")
+            show_notification("Moving Cursor")
 
         # Double Click
         elif is_double_click(landmarks_list, thumb_index_dist):
@@ -190,11 +190,10 @@ def detect_gestures(frame, landmarks_list, processed):
         
         # Screenshot
         elif is_screenshot(landmarks_list, thumb_index_dist):
-            im1 = pyautogui.screenshot()
-            label = random.randint(1, 1000)
-            im1.save(f'my_screenshot_{label}.png')
-            #cv2.putText(frame, "Screenshot", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            show_notification("Screenshot")
+            mouse.press(Button.right)
+            mouse.release(Button.right)
+            #cv2.putText(frame, "Right Click", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            show_notification("Right Click")
 
         # Zoom In
         elif is_zoom_in(landmarks_list, thumb_index_dist):
@@ -209,7 +208,7 @@ def detect_gestures(frame, landmarks_list, processed):
 
 def check_prolonged_usage():
     elapsed_time = time.time() - start_time
-    if elapsed_time >= 1800:  # 30 minutes
+    if elapsed_time >= 300:  # 5 minutes
         show_notification("You may be using the virtual mouse for too long. Take a break!")
     elif elapsed_time >= 3600:  # 60 minutes
         show_notification("Using the virtual mouse for extended periods may cause strain. Please rest!")
