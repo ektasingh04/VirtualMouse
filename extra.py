@@ -1,3 +1,5 @@
+#This is the previous version before notification and other changes 
+
 import cv2
 import mediapipe as mp
 import pyautogui
