@@ -294,7 +294,7 @@ def check_prolonged_usage():
     current_time = time.time()
 
     # Check if enough time has passed to trigger a notification
-    if elapsed_time >= 30 and elapsed_time < 3600:  # between 30 and 60 minutes
+    if elapsed_time >= 120 and elapsed_time < 3600:  # between 30 and 60 minutes
         if not notification_shown or current_time - last_notification_time > notification_display_duration:
             show_notification("You may be using the virtual mouse for too long. Take a break!")
             last_notification_time = current_time
